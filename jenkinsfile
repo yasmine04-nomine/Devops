@@ -1,0 +1,48 @@
+pipeline {
+    agent any
+    
+    environment {
+        APP_NAME = "MyApp"
+        BUILD_VERSION = "1.0.0"
+        REGISTRY = "docker.io"
+    }
+    
+    stages {
+        stage('Initialize') {
+            steps {
+                script {
+                    echo "App Name: ${APP_NAME}"
+                    echo "Build Version: ${BUILD_VERSION}"
+                    echo "Registry: ${REGISTRY}"
+                }
+            }
+        }
+        
+        stage('Build') {
+            steps {
+                script {
+                    echo "Building ${APP_NAME} version ${BUILD_VERSION}"
+                    sh 'echo "Build Stage"'
+                }
+            }
+        }
+        
+        stage('Test') {
+            steps {
+                script {
+                    def testResult = sh(script: 'echo "Running tests"', returnStdout: true).trim()
+                    echo "Test Result: ${testResult}"
+                }
+            }
+        }
+        
+        stage('Deploy') {
+            when {
+                branch 'main'
+            }
+            steps {
+                echo "Deploying to production"
+            }
+        }
+    }
+}
