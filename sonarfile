@@ -1,29 +1,17 @@
 pipeline {
-    agent any
+  agent any
 
-    tools {
-        maven 'Maven'   // Only if you configured Maven in Jenkins Tools
+  stages {
+    stage('Checkout') {
+      steps { checkout scm }
     }
 
-    stages {
-        stage('Checkout') {
-            steps {
-                checkout scm
-            }
+    stage('SonarQube Analysis') {
+      steps {
+        withSonarQubeEnv('sonarqube') {
+          bat 'mvnw.cmd -B clean verify sonar:sonar'
         }
-
-        stage('Build') {
-            steps {
-                sh 'mvn clean package'
-            }
-        }
-
-        stage('SonarQube Analysis') {
-            steps {
-                withSonarQubeEnv('sonarqube') {   // <-- Put your SonarQube name here
-                    sh 'mvn sonar:sonar'
-                }
-            }
-        }
+      }
     }
+  }
 }
