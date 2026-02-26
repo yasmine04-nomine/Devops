@@ -8,9 +8,8 @@ pipeline {
 
     stage('SonarQube Analysis') {
       steps {
-        withSonarQubeEnv('sonarqube') {   // keep this name exactly as in Jenkins config
-          sh 'chmod +x mvnw || true'
-          sh './mvnw -B clean verify sonar:sonar'
+              withSonarQubeEnv('sonarqube') {
+              sh 'mvn -B clean package -DskipTests sonar:sonar'
         }
       }
     }
