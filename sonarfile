@@ -1,0 +1,29 @@
+pipeline {
+    agent any
+
+    tools {
+        maven 'Maven'   // Only if you configured Maven in Jenkins Tools
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Build') {
+            steps {
+                sh 'mvn clean package'
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('sonarqube') {   // <-- Put your SonarQube name here
+                    sh 'mvn sonar:sonar'
+                }
+            }
+        }
+    }
+}
