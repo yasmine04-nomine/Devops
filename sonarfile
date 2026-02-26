@@ -1,15 +1,21 @@
 pipeline {
   agent any
 
- stages {
+  stages {
     stage('Checkout') {
-      steps { checkout scm }
+      steps {
+        checkout scm
+      }
     }
 
     stage('SonarQube Analysis') {
       steps {
-              withSonarQubeEnv('sonarqube') {
-              sh 'mvn -B clean package -DskipTests sonar:sonar'
-            }
+        withSonarQubeEnv('sonarqube') {
+          withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+            sh 'mvn -B clean package -DskipTests sonar:sonar -Dsonar.host.url=http://172.21.234.25:8080 -Dsonar.token=$SONAR_TOKEN'
+          }
+        }
+      }
+    }
   }
 }
