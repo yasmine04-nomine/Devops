@@ -1,0 +1,84 @@
+pipeline {
+    agent any
+
+    environment {
+        DOCKERHUB_USER = 'nomine04'
+        IMAGE_NAME     = 'spring-app'
+        IMAGE_TAG      = '1.0'
+        DOCKER_IMAGE   = "${DOCKERHUB_USER}/${IMAGE_NAME}:${IMAGE_TAG}"
+        KUBE_NAMESPACE = 'devops'
+    }
+
+    stages {
+
+        // ─── STAGE 1 ────────────────────────────
+        stage('Git Checkout') {
+            steps {
+                echo '📥 Cloning repository...'
+                checkout scm
+            }
+        }
+
+        // ─── STAGE 2 ────────────────────────────
+        stage('Build') {
+            steps {
+                echo '🔨 Building with Maven...'
+                sh 'mvn clean package -DskipTests'
+            }
+        }
+
+        // ─── STAGE 3 ────────────────────────────
+        stage('Docker Build & Push') {
+            steps {
+                echo '🐳 Building Docker image...'
+                sh "docker build -t ${DOCKER_IMAGE} ."
+
+                echo '📤 Pushing to Docker Hub...'
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-credentials',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    sh "echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin"
+                    sh "docker push ${DOCKER_IMAGE}"
+                }
+            }
+        }
+
+        // ─── STAGE 4 ────────────────────────────
+        stage('Kubernetes Deploy') {
+            steps {
+                echo '☸️ Deploying to Kubernetes...'
+                sh "kubectl apply -f mysql-deployment.yaml"
+                sh "kubectl apply -f spring-deployment.yaml"
+            }
+        }
+
+        // ─── STAGE 5 ────────────────────────────
+        stage('Verify Deployment') {
+            steps {
+                echo '✅ Checking deployment status...'
+                sh """
+                    kubectl rollout status deployment/mysql \
+                        -n ${KUBE_NAMESPACE} --timeout=120s
+                    kubectl rollout status deployment/spring-app \
+                        -n ${KUBE_NAMESPACE} --timeout=120s
+                """
+                sh "kubectl get pods -n ${KUBE_NAMESPACE}"
+                sh "kubectl get svc  -n ${KUBE_NAMESPACE}"
+            }
+        }
+    }
+
+    post {
+        success {
+            echo '🎉 Pipeline succeeded!'
+            sh "kubectl get svc spring-service -n ${KUBE_NAMESPACE}"
+        }
+        failure {
+            echo '❌ Pipeline failed!'
+            sh "kubectl get pods -n ${KUBE_NAMESPACE}"
+            sh "kubectl logs -l app=spring-app -n ${KUBE_NAMESPACE} --tail=20"
+        }
+    }
+}
